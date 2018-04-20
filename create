@@ -1,0 +1,435 @@
+#!/bin/bash
+# This script is used to generate all relevant files for the Moitessier HAT.
+# 
+#
+# Usage: ./create.sh
+#
+# directory structure
+# <current director>
+#         |
+#          -------- app
+#         |
+#          -------- device_tree
+#         |
+#          -------- firmware
+#         |
+#          -------- flasher
+#         |
+#          -------- modules
+#         |
+#          -------- scripts
+
+#####################################
+#
+# script configuration
+#
+#####################################
+APP_DIR=app                                                             # path to the parent directory, where user space applications are located
+DEVICE_TREE_DIR=device_tree                                             # path to the device tree related files
+EEPROM_DIR=${DEVICE_TREE_DIR}/eeprom                                    # path to the EEPROM related files
+MODULES_DIR=modules                                                     # path to the kernel modules
+SCRIPTS_DIR=scripts                                                     # path to the scripts
+KERNEL_DIR=../kernel/kernel_openplotter                                    # path to the kernel for cross-compiling/-linking
+FLASHER_DIR=flasher                                                     # path to the flasher
+FW_DIR=firmware                                                         # path to the HAT firmware
+COMPILER=arm-linux-gnueabihf-gcc                                        # compiler to user  
+ARCHITECTURE=armhf                                                      # architecture that should be supported
+TARGET_PARENT_PATH=/home/pi/moitessier                                  # path on the target, where the generated files should be deployed to
+FW_UPDATE_SCRIPT=fw_update_moitessier                                   # name of the script used to update the HAT firmware
+EEPROM_UPDATE_SCRIPT=eeprom_update_moitessier                           # name of the script used to write the device tree image to the ID EEPROM of the HAT
+FW_FILE=application.binary                                              # name of the firmware binary of the HAT
+SCRIPT_NAME_DRIVER_LOAD=load_driver_moitessier                          # name of the script that is loading the HAT driver during boot
+DEBIAN_PKG_NAME=moitessier                                              # name of the debian package
+DEBIAN_PKG_SHORT_DESCRIPTION="Moitessier HAT (AIS/GNSS navigation)"     # short description of the debian package
+DEBIAN_PKG_LONG_DESCRIPTION="This package provides all \
+                             the relevant tools, binaries \
+                             and scripts to communicate, \
+                             control and update the Moitessier HAT."    # long description of the debian package
+DEBIAN_PKG_HOMEPAGE="http://www.rooco.at"                    
+DEBIAN_PKG_MAINTAINER="Thomas POMS <hwsw.development@gmail.com>"        # name of the maintainer of the debian package                       
+OUTPUT_DIR=deploy                                                       # deploy path
+OUTPUT_DIR_FILE_STRUCTURE=file_structure                                # subdirectory to store the file structure of the deployment
+OUTPUT_DIR_DEVICE_TREE=${DEVICE_TREE_DIR}                               # subdirectory to deploy the device tree and related files
+OUTPUT_DIR_MODULES=${MODULES_DIR}                                       # subdirectory to deploy the kernel modules
+OUTPUT_DIR_FLASHER=${FLASHER_DIR}                                       # subdirectory to deploy the flasher tools      
+OUTPUT_DIR_SCRIPTS=${SCRIPTS_DIR}                                       # subdirectory to deploy the scripts
+OUTPUT_DIR_DEBIAN_PKG=moitessier                                        # subdirectory to deploy the debian package
+
+
+
+error()
+{
+    echo
+    echo "******************************************************************************************"
+    echo "ERROR occured!!"
+    echo
+    echo $1
+    echo "******************************************************************************************"
+    echo
+}
+
+info()
+{
+    echo
+    echo "******************************************************************************************"
+    echo $1
+    echo "******************************************************************************************"
+    echo
+}
+
+#####################################
+#
+# compile sources
+#
+#####################################
+
+# compile applications
+info "Compiling applications..."
+make -C $APP_DIR CC=${COMPILER}
+if [ $? -ne 0 ]
+then
+    error "Compiling applications failed"
+    exit 1
+fi   
+
+# compile device tree
+info "Compiling device tree..."
+${KERNEL_DIR}/scripts/dtc/dtc -@ -I dts -O dtb -o ${DEVICE_TREE_DIR}/moitessier.dtbo ${DEVICE_TREE_DIR}/moitessier.dts
+if [ $? -ne 0 ]
+then
+    error "Compiling device tree failed"
+    exit 1
+fi   
+
+# create ID eeprom file
+info "Creating ID EEPROM image..."
+${EEPROM_DIR}/eepmake ${EEPROM_DIR}/eeprom_settings.txt ${EEPROM_DIR}/moitessier.eep ${DEVICE_TREE_DIR}/moitessier.dtbo
+if [ $? -ne 0 ]
+then
+    error "Creating the ID EEPROM image failed"
+    exit 1
+fi   
+
+# compile flasher
+info "Compiling flasher..."
+#export CC=${COMPILER}
+make clean -C ${FLASHER_DIR} CC=${COMPILER}
+make -C ${FLASHER_DIR} CC=${COMPILER}
+if [ $? -ne 0 ]
+then
+    error "Compiling the flasher failed"
+    exit 1
+fi 
+
+# compile kernel modules
+info "Compiling kernel modules..."
+moduleList=($(find ${MODULES_DIR} -name Makefile))
+if [ $? -ne 0 ]
+then
+    error "Could not find modules"
+    exit 1
+fi
+for module in "${moduleList[@]}"
+do
+    # determine hierarchy level of the modules subdirectory
+    hierarchy=($(echo $module | grep -o "/" | wc -l))
+
+    # create relative path for kernel directory based on the modules hierarchy
+    kernelDir=""
+    for ((i=0; i < ${hierarchy}; i++))
+    do
+        kernelDir=${kernelDir}../
+    done
+    kernelDir=${kernelDir}${KERNEL_DIR}
+
+    # compile the module
+    make -C ${module%/*} ARCH=arm CROSS_COMPILE=${COMPILER%-*}- all KDIR=${kernelDir}
+    if [ $? -ne 0 ]
+    then
+        error "Compiling kernel module ${module} failed"
+        exit 1
+    fi
+done
+
+
+
+
+#####################################
+#
+# creating output files
+#
+#####################################
+
+info "Creating output directory..."
+if [ -d "${OUTPUT_DIR}" ]; then
+    rm -r ${OUTPUT_DIR}   
+    if [ $? -ne 0 ]
+    then
+        error "Creating the directory ${OUTPUT_DIR} failed"
+        exit 1
+    fi  
+fi
+mkdir ${OUTPUT_DIR}
+if [ $? -ne 0 ]
+then
+    error "Creating the directory ${OUTPUT_DIR} failed"
+    exit 1
+fi
+
+##############
+
+info "Copying application binaries to output directory..."
+for subdir in ${APP_DIR}/*; do
+    if [ -d "${subdir}" ]; then
+        if [ ! -d "${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${subdir}" ]; then
+            mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${subdir}
+            if [ $? -ne 0 ]
+            then
+                error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${subdir} failed"
+                exit 1
+            fi
+        fi
+        cp ${subdir}/bin/* ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${subdir}    
+        if [ $? -ne 0 ]
+        then
+            error "Copying files from ${subdir}/bin/* to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${subdir} failed"
+            exit 1
+        fi
+    fi
+done
+
+##############
+
+info "Copying modules to output directory..."
+if [ ! -d "${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${MODULES_DIR}" ]; then
+    mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES}
+    if [ $? -ne 0 ]
+    then
+        error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES} failed"
+        exit 1
+    fi
+fi
+moduleList=($(find ${MODULES_DIR} -name *.ko))
+if [ $? -ne 0 ]
+then
+    error "Could not find modules"
+    exit 1
+fi
+for module in "${moduleList[@]}"
+do
+    cp ${module} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES}
+    if [ $? -ne 0 ]
+    then
+        error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES} failed"
+        exit 1
+    fi
+done
+
+##############
+
+info "Copying scripts to output directory..."
+if [ ! -d "${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_SCRIPTS}" ]; then
+    mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_SCRIPTS}
+    if [ $? -ne 0 ]
+    then
+        error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_SCRIPTS} failed"
+        exit 1
+    fi
+fi
+cp ${SCRIPTS_DIR}/* ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_SCRIPTS}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_SCRIPTS} failed"
+    exit 1
+fi
+
+##############
+
+info "Copying flasher binaries to output directory..."
+if [ ! -d "${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}" ]; then
+    mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}
+    if [ $? -ne 0 ]
+    then
+        error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER} failed"
+        exit 1
+    fi
+fi
+cp ${FLASHER_DIR}/stm32flash ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER} failed"
+    exit 1
+fi
+
+ln -s ../${OUTPUT_DIR_SCRIPTS}/${FW_UPDATE_SCRIPT} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${FW_UPDATE_SCRIPT}
+if [ $? -ne 0 ]
+then
+    error "Creating link ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${FW_UPDATE_SCRIPT} failed"
+    exit 1
+fi
+cp ${FW_DIR}/* ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER} failed"
+    exit 1
+fi
+
+# https://stackoverflow.com/questions/19482123/extract-part-of-a-string-using-bash-cut-split
+moduleList=($(find ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES} -name *.ko))
+if [ $? -ne 0 ]
+then
+    error "Could not find modules"
+    exit 1
+fi
+for module in "${moduleList[@]}"
+do
+    ln -s ../${OUTPUT_DIR_MODULES}/${module##*/} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${module##*/}
+    if [ $? -ne 0 ]
+    then
+        error "Creating link ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${module##*/} failed"
+        exit 1
+    fi
+done
+
+##############
+
+info "Copying device tree and ID EEPROM related files to output directory..."
+if [ ! -d "${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}" ]; then
+    mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}
+    if [ $? -ne 0 ]
+    then
+        error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE} failed"
+        exit 1
+    fi
+fi
+cp ${DEVICE_TREE_DIR}/moitessier.dtbo ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE} failed"
+    exit 1
+fi
+cp ${EEPROM_DIR}/eepflash.sh ${EEPROM_DIR}/moitessier.eep ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE} failed"
+    exit 1
+fi
+
+ln -s ../${OUTPUT_DIR_SCRIPTS}/${EEPROM_UPDATE_SCRIPT} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}/${EEPROM_UPDATE_SCRIPT}
+if [ $? -ne 0 ]
+then
+    error "Creating link ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}/${EEPROM_UPDATE_SCRIPT} failed"
+    exit 1
+fi
+
+# https://stackoverflow.com/questions/19482123/extract-part-of-a-string-using-bash-cut-split
+moduleList=($(find ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES} -name *.ko))
+if [ $? -ne 0 ]
+then
+    error "Could not find modules"
+    exit 1
+fi
+for module in "${moduleList[@]}"
+do
+    ln -s ../${OUTPUT_DIR_MODULES}/${module##*/} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}/${module##*/}
+    if [ $? -ne 0 ]
+    then
+        error "Creating link ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_DEVICE_TREE}/${module##*/} failed"
+        exit 1
+    fi
+done
+
+##############
+
+info "Creating archive file..."
+tar -cjf ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}.tar.bz2 -C ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE} .
+
+#####################################
+#
+# creating debian package
+#
+#####################################
+
+info "Creating debian directory..."
+
+if [ -d "${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}" ]; then
+    rm -r ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}    
+    if [ $? -ne 0 ]
+    then
+        error "Removing the directory ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG} failed"
+        exit 1
+    fi 
+fi
+mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN
+if [ $? -ne 0 ]
+then
+    error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN failed"
+    exit 1
+fi   
+
+touch ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/control
+# UTC timestamp: timestamp=$(date +%s)
+timestamp=$(date "+%Y.%m.%d-%H%M%S")
+echo "Package: ${DEBIAN_PKG_NAME}
+Version: ${timestamp}
+Maintainer: ${DEBIAN_PKG_MAINTAINER}
+Architecture: ${ARCHITECTURE}
+Homepage: ${DEBIAN_PKG_HOMEPAGE}
+Description: "${DEBIAN_PKG_SHORT_DESCRIPTION}"
+ "${DEBIAN_PKG_LONG_DESCRIPTION}"" > ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/control
+
+touch ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/postinst
+chmod a+x ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/postinst
+echo "#!/bin/bash
+echo 'Running post install...'
+sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} remove
+sudo cp ${TARGET_PARENT_PATH}/${OUTPUT_DIR_SCRIPTS}/${SCRIPT_NAME_DRIVER_LOAD} /etc/init.d/
+sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} defaults
+echo 'Updating HAT firmware...'
+cd ${TARGET_PARENT_PATH}/${OUTPUT_DIR_FLASHER}/ && sudo ./${FW_UPDATE_SCRIPT} -s ${FW_FILE}
+echo 'Rebooting system...'
+sleep 4
+reboot
+exit 0" > ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/postinst
+
+mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}${TARGET_PARENT_PATH}
+if [ $? -ne 0 ]
+then
+    error "Creating the directory ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}${TARGET_PARENT_PATH} failed"
+    exit 1
+fi
+
+cp -pRd ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/* ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}${TARGET_PARENT_PATH}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}${TARGET_PARENT_PATH} failed"
+    exit 1
+fi
+
+dpkg-deb --build ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}
+if [ $? -ne 0 ]
+then
+    error "Creating debian package failed"
+    exit 1
+fi
+
+mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb
+if [ $? -ne 0 ]
+then
+    error "Renaming debian package failed"
+    exit 1
+fi
+
+##############
+
+echo 
+echo "******************************************************************************************"
+echo "*                                                                                        *"
+echo "* CREATING FILES SUCCESSFULL!!!                                                          *"
+echo "*                                                                                        *"
+echo "******************************************************************************************"
+info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb'." 
+exit 0
+ 
+
+

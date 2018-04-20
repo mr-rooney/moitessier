@@ -1,0 +1,21 @@
+[submodule "app"]
+	path = app
+	url = https://github.com/mr-rooney/moitessier-app.git
+[submodule "device_tree"]
+	path = device_tree
+	url = https://github.com/mr-rooney/moitessier-device_tree.git
+[submodule "firmware"]
+	path = firmware
+	url = https://github.com/mr-rooney/moitessier-firmware.git
+[submodule "flasher"]
+	path = flasher
+	url = https://github.com/mr-rooney/moitessier-flasher.git
+[submodule "modules/moitessier"]
+	path = modules/moitessier
+	url = https://github.com/mr-rooney/moitessier-modules-moitessier.git
+[submodule "modules/i2c-gpio-param"]
+	path = modules/i2c-gpio-param
+	url = https://github.com/mr-rooney/moitessier-modules-i2c-gpio-param.git
+[submodule "scripts"]
+	path = scripts
+	url = https://github.com/mr-rooney/moitessier-scripts.git
