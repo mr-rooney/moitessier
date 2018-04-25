@@ -103,6 +103,18 @@ fi
 
 # create ID eeprom file
 info "Creating ID EEPROM image..."
+make -C ${EEPROM_DIR} clean
+if [ $? -ne 0 ]
+then
+    error "Creating the ID EEPROM image failed"
+    exit 1
+fi   
+make -C ${EEPROM_DIR} all
+if [ $? -ne 0 ]
+then
+    error "Creating the ID EEPROM image failed"
+    exit 1
+fi   
 ${EEPROM_DIR}/eepmake ${EEPROM_DIR}/eeprom_settings.txt ${EEPROM_DIR}/moitessier.eep ${DEVICE_TREE_DIR}/moitessier.dtbo
 if [ $? -ne 0 ]
 then
@@ -386,10 +398,15 @@ sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} remove
 sudo cp ${TARGET_PARENT_PATH}/${OUTPUT_DIR_SCRIPTS}/${SCRIPT_NAME_DRIVER_LOAD} /etc/init.d/
 sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} defaults
 echo 'Updating HAT firmware...'
-cd ${TARGET_PARENT_PATH}/${OUTPUT_DIR_FLASHER}/ && sudo ./${FW_UPDATE_SCRIPT} -s ${FW_FILE}
-echo 'Rebooting system...'
-sleep 4
-reboot
+cd ${TARGET_PARENT_PATH}/${OUTPUT_DIR_FLASHER}/ 
+sudo ./${FW_UPDATE_SCRIPT} -s ${FW_FILE}
+if [ \$? -eq 0 ]
+then
+    echo 'Rebooting system...'
+    (sleep 5; reboot) &
+else
+    echo 'Error occured. You might try to install the package again.'    
+fi
 exit 0" > ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/postinst
 
 mkdir -p ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}${TARGET_PARENT_PATH}
@@ -413,7 +430,10 @@ then
     exit 1
 fi
 
-mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb
+tempPath=$(pwd)
+kernelVersion=$(cd ${KERNEL_DIR} && make kernelversion && cd ${tempPath})
+
+mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb
 if [ $? -ne 0 ]
 then
     error "Renaming debian package failed"
@@ -428,7 +448,7 @@ echo "*                                                                         
 echo "* CREATING FILES SUCCESSFULL!!!                                                          *"
 echo "*                                                                                        *"
 echo "******************************************************************************************"
-info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb'." 
+info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb'." 
 exit 0
  
 
