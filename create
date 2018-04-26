@@ -36,6 +36,7 @@ COMPILER=arm-linux-gnueabihf-gcc                                        # compil
 ARCHITECTURE=armhf                                                      # architecture that should be supported
 TARGET_PARENT_PATH=/home/pi/moitessier                                  # path on the target, where the generated files should be deployed to
 FW_UPDATE_SCRIPT=fw_update_moitessier                                   # name of the script used to update the HAT firmware
+FW_UPDATE_BLACK_LIST=fw_update_moitessier_black_list.txt                # name of the black list used for the HAT firmware update
 EEPROM_UPDATE_SCRIPT=eeprom_update_moitessier                           # name of the script used to write the device tree image to the ID EEPROM of the HAT
 FW_FILE=application.binary                                              # name of the firmware binary of the HAT
 SCRIPT_NAME_DRIVER_LOAD=load_driver_moitessier                          # name of the script that is loading the HAT driver during boot
@@ -286,6 +287,19 @@ then
     exit 1
 fi
 
+ln -s ../${OUTPUT_DIR_SCRIPTS}/${FW_UPDATE_BLACK_LIST} ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${FW_UPDATE_BLACK_LIST}
+if [ $? -ne 0 ]
+then
+    error "Creating link ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}/${FW_UPDATE_BLACK_LIST} failed"
+    exit 1
+fi
+cp ${FW_DIR}/* ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER}
+if [ $? -ne 0 ]
+then
+    error "Copying files to ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_FLASHER} failed"
+    exit 1
+fi
+
 # https://stackoverflow.com/questions/19482123/extract-part-of-a-string-using-bash-cut-split
 moduleList=($(find ${OUTPUT_DIR}/${OUTPUT_DIR_FILE_STRUCTURE}/${OUTPUT_DIR_MODULES} -name *.ko))
 if [ $? -ne 0 ]
@@ -379,11 +393,16 @@ then
     exit 1
 fi   
 
+
+# determine the kernel version we are using to compile the modules
+tempPath=$(pwd)
+kernelVersion=$(cd ${KERNEL_DIR} && make kernelversion && cd ${tempPath})
+
 touch ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/control
 # UTC timestamp: timestamp=$(date +%s)
 timestamp=$(date "+%Y.%m.%d-%H%M%S")
 echo "Package: ${DEBIAN_PKG_NAME}
-Version: ${timestamp}
+Version: ${kernelVersion}-${timestamp}
 Maintainer: ${DEBIAN_PKG_MAINTAINER}
 Architecture: ${ARCHITECTURE}
 Homepage: ${DEBIAN_PKG_HOMEPAGE}
@@ -430,9 +449,6 @@ then
     exit 1
 fi
 
-tempPath=$(pwd)
-kernelVersion=$(cd ${KERNEL_DIR} && make kernelversion && cd ${tempPath})
-
 mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb
 if [ $? -ne 0 ]
 then
@@ -448,7 +464,7 @@ echo "*                                                                         
 echo "* CREATING FILES SUCCESSFULL!!!                                                          *"
 echo "*                                                                                        *"
 echo "******************************************************************************************"
-info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb'." 
+info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb'." 
 exit 0
  
 
