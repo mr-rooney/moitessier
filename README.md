@@ -3,7 +3,7 @@ Moitessier HAT
 
 The Moitesser HAT is named after the famous sailor [Bernard Moitessier](https://en.wikipedia.org/wiki/Bernard_Moitessier).
 It is a single-board navigation solution for the Raspberry Pi and provides the following features:
-* High-sensitivity dual AIS receiver (159.000 MHz to 162.025 MHz, -114dBm)
+* High-sensitivity dual AIS receiver (159.000 MHz to 162.025 MHz, -112dBm)
 * High-performance GNSS receiver (embedded patch antenna and external antenna support)
 * Sensors (depending on assembly option):
   * Temperature
