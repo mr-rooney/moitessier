@@ -29,7 +29,7 @@ DEVICE_TREE_DIR=device_tree                                             # path t
 EEPROM_DIR=${DEVICE_TREE_DIR}/eeprom                                    # path to the EEPROM related files
 MODULES_DIR=modules                                                     # path to the kernel modules
 SCRIPTS_DIR=scripts                                                     # path to the scripts
-KERNEL_DIR=../kernel/kernel_openplotter                                    # path to the kernel for cross-compiling/-linking
+KERNEL_DIR=../kernel                                                    # path to the kernel for cross-compiling/-linking
 FLASHER_DIR=flasher                                                     # path to the flasher
 FW_DIR=firmware                                                         # path to the HAT firmware
 COMPILER=arm-linux-gnueabihf-gcc                                        # compiler to user  
@@ -46,7 +46,7 @@ DEBIAN_PKG_LONG_DESCRIPTION="This package provides all \
                              the relevant tools, binaries \
                              and scripts to communicate, \
                              control and update the Moitessier HAT."    # long description of the debian package
-DEBIAN_PKG_HOMEPAGE="http://www.rooco.at"                    
+DEBIAN_PKG_HOMEPAGE="http://www.rooco.eu"                    
 DEBIAN_PKG_MAINTAINER="Thomas POMS <hwsw.development@gmail.com>"        # name of the maintainer of the debian package                       
 OUTPUT_DIR=deploy                                                       # deploy path
 OUTPUT_DIR_FILE_STRUCTURE=file_structure                                # subdirectory to store the file structure of the deployment
@@ -54,8 +54,9 @@ OUTPUT_DIR_DEVICE_TREE=${DEVICE_TREE_DIR}                               # subdir
 OUTPUT_DIR_MODULES=${MODULES_DIR}                                       # subdirectory to deploy the kernel modules
 OUTPUT_DIR_FLASHER=${FLASHER_DIR}                                       # subdirectory to deploy the flasher tools      
 OUTPUT_DIR_SCRIPTS=${SCRIPTS_DIR}                                       # subdirectory to deploy the scripts
+OUTPUT_DIR_APP=${APP_DIR}                                               # subdirectory to deploy the app
 OUTPUT_DIR_DEBIAN_PKG=moitessier                                        # subdirectory to deploy the debian package
-
+DEFAULT_HAT_CONFIGURATION_FILE=${TARGET_PARENT_PATH}/${OUTPUT_DIR_APP}/moitessier_ctrl/default_config.xml   # the file holding the default configuration file used by the app moitessier_ctrl
 
 
 error()
@@ -416,6 +417,7 @@ echo 'Running post install...'
 sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} remove
 sudo cp ${TARGET_PARENT_PATH}/${OUTPUT_DIR_SCRIPTS}/${SCRIPT_NAME_DRIVER_LOAD} /etc/init.d/
 sudo update-rc.d -f ${SCRIPT_NAME_DRIVER_LOAD} defaults
+sudo chown root:root ${DEFAULT_HAT_CONFIGURATION_FILE}
 echo 'Updating HAT firmware...'
 cd ${TARGET_PARENT_PATH}/${OUTPUT_DIR_FLASHER}/ 
 sudo ./${FW_UPDATE_SCRIPT} -s ${FW_FILE}
