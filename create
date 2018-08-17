@@ -57,7 +57,7 @@ OUTPUT_DIR_SCRIPTS=${SCRIPTS_DIR}                                       # subdir
 OUTPUT_DIR_APP=${APP_DIR}                                               # subdirectory to deploy the app
 OUTPUT_DIR_DEBIAN_PKG=moitessier                                        # subdirectory to deploy the debian package
 DEFAULT_HAT_CONFIGURATION_FILE=${TARGET_PARENT_PATH}/${OUTPUT_DIR_APP}/moitessier_ctrl/default_config.xml   # the file holding the default configuration file used by the app moitessier_ctrl
-GIT_VERSION=$(git describe --tags --dirty)
+GIT_VERSION=$(git describe --tags)
 GIT_VERSION_KERNEL=$(git --git-dir=${KERNEL_DIR}/.git describe --tags)
 GIT_VERSION_KERNEL_SHORT=${GIT_VERSION_KERNEL/raspberrypi-kernel_/}
 
