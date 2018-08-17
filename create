@@ -57,7 +57,9 @@ OUTPUT_DIR_SCRIPTS=${SCRIPTS_DIR}                                       # subdir
 OUTPUT_DIR_APP=${APP_DIR}                                               # subdirectory to deploy the app
 OUTPUT_DIR_DEBIAN_PKG=moitessier                                        # subdirectory to deploy the debian package
 DEFAULT_HAT_CONFIGURATION_FILE=${TARGET_PARENT_PATH}/${OUTPUT_DIR_APP}/moitessier_ctrl/default_config.xml   # the file holding the default configuration file used by the app moitessier_ctrl
-
+GIT_VERSION=$(git describe --tags --dirty)
+GIT_VERSION_KERNEL=$(git --git-dir=${KERNEL_DIR}/.git describe --tags)
+GIT_VERSION_KERNEL_SHORT=${GIT_VERSION_KERNEL/raspberrypi-kernel_/}
 
 error()
 {
@@ -403,7 +405,7 @@ touch ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}/DEBIAN/control
 # UTC timestamp: timestamp=$(date +%s)
 timestamp=$(date "+%Y.%m.%d-%H%M%S")
 echo "Package: ${DEBIAN_PKG_NAME}
-Version: ${kernelVersion}-${timestamp}
+Version: ${GIT_VERSION_KERNEL_SHORT}-${kernelVersion}-${GIT_VERSION}
 Maintainer: ${DEBIAN_PKG_MAINTAINER}
 Architecture: ${ARCHITECTURE}
 Homepage: ${DEBIAN_PKG_HOMEPAGE}
@@ -451,7 +453,8 @@ then
     exit 1
 fi
 
-mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb
+DEB_FILE_NAME=${OUTPUT_DIR_DEBIAN_PKG}_${GIT_VERSION_KERNEL_SHORT}_${kernelVersion}_${GIT_VERSION}_${ARCHITECTURE}.deb
+mv ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}.deb ${OUTPUT_DIR}/${DEB_FILE_NAME}
 if [ $? -ne 0 ]
 then
     error "Renaming debian package failed"
@@ -466,7 +469,7 @@ echo "*                                                                         
 echo "* CREATING FILES SUCCESSFULL!!!                                                          *"
 echo "*                                                                                        *"
 echo "******************************************************************************************"
-info "Copy ${OUTPUT_DIR}/${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb to your Raspberry Pi and run 'sudo dpkg -i ${OUTPUT_DIR_DEBIAN_PKG}_${kernelVersion}_${timestamp}_${ARCHITECTURE}.deb'." 
+info "Copy ${OUTPUT_DIR}/${DEB_FILE_NAME} to your Raspberry Pi and run 'sudo dpkg -i ${DEB_FILE_NAME}'." 
 exit 0
  
 
