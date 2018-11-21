@@ -46,7 +46,7 @@ DEBIAN_PKG_LONG_DESCRIPTION="This package provides all \
                              the relevant tools, binaries \
                              and scripts to communicate, \
                              control and update the Moitessier HAT."    # long description of the debian package
-DEBIAN_PKG_HOMEPAGE="http://www.rooco.eu"                    
+DEBIAN_PKG_HOMEPAGE="https://www.rooco.eu"                    
 DEBIAN_PKG_MAINTAINER="Thomas POMS <hwsw.development@gmail.com>"        # name of the maintainer of the debian package                       
 OUTPUT_DIR=deploy                                                       # deploy path
 OUTPUT_DIR_FILE_STRUCTURE=file_structure                                # subdirectory to store the file structure of the deployment
