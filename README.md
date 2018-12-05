@@ -61,14 +61,7 @@ host> git submodule update --init --recursive
 ...otherwise
 ```
 host> git submodule update
-```
-
-The following steps need to be repeated for each submodule. _\<SUBMOUDLE>_ is a placeholder for the proper submodule name.
-```
-host> cd <SUBMODULE>
-host> git checkout master
-host> cd ..
-```       
+``` 
 
 Compilation
 -----------
