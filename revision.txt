@@ -1,0 +1,30 @@
+************************************************************************************************************
+************************************************************************************************************
+******************************************    REVISION HISTORY    ******************************************
+******************************************       Moitessier       ******************************************
+******************************************       (c) Rooco        ******************************************
+************************************************************************************************************
+************************************************************************************************************
+
+Version 1.7.0 [2020-03-06]
+    - Added support to read GNSS firmware version
+    - HAT firmware version 1.5.0
+
+Version 1.6.0 [2020-02-21]
+    - Added support to enable/disable GNSS NMEA sentences
+    - Added support to enable/disable shutdown button (Moitessier HAT 2 only)
+    
+Version 1.5.1 [2020-02-03]
+    - Fixed booting issues, if SPI and I2C are not enabled on the Raspberry Pi
+    
+Version 1.5.0 [2020-02-02]
+    - Fixed erroneous shutdowns on HATs not supporting the shutdown button
+    - Fixed sporadically failing firmware updates in OpenPlotter 2
+    - HAT firmware version 1.4.0
+    
+Version 1.4.1 [2020-01-20]	
+    - Fixed system crash when SPI is disabled
+    
+Version 1.4.0 [2020-01-04]
+    - Add support for shutdown button (Moitessier HAT 2 only)
+    - HAT firmware version 1.3.0
