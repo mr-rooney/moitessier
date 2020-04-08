@@ -6,6 +6,14 @@
 ************************************************************************************************************
 ************************************************************************************************************
 
+Version 1.9.0 [2020-04-08]
+    - Parameter DO_SHUTDOWN (Moitessier driver) can now be written from user space as well
+    - Shutdown service supports shutdown and reboot, depending on the value written to DO_SHUTDOWN either by
+      pressing the push button of the Moitessier HAT or writing the value directly via a terminal to the proper
+      sysfs parameter (e.g. for testing purpose).
+    - Minor bug fixes to get rid of some warning during runtime (e.g. "warning: command substitution: ignored null byte in input")
+    - Fixed not proper working shutdown service on some systems
+
 Version 1.8.1 [2020-03-13]
     - Moitessier shutdown procedure implemented as systemd service. If the process is killed it will be 
       automatically restarted.
