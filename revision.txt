@@ -6,6 +6,13 @@
 ************************************************************************************************************
 ************************************************************************************************************
 
+Version 2.0.0 [2020-06-15]
+    - Bug-fix: The i2c-gpio.dtbo included in kernel version 4.19.118 is corrupted. This bug will prevent the system
+               to boot, if line dtoverlay=i2c-gpio is enabled in /boot/config.txt. To update/upgrade your system
+               you need to call script bug_fix_kernel_4.19.118.
+    - AIS message counter will be shown in the results of the production test.
+    - Added support for I2C GPIO device detection.         
+    
 Version 1.9.0 [2020-04-08]
     - Parameter DO_SHUTDOWN (Moitessier driver) can now be written from user space as well
     - Shutdown service supports shutdown and reboot, depending on the value written to DO_SHUTDOWN either by
