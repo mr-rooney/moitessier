@@ -6,6 +6,11 @@
 ************************************************************************************************************
 ************************************************************************************************************
 
+Version 2.1.0 [2020-07-10]
+    - Bug-fix: I2C GPIO device detection modified. Under certain circumstances it does not work as expected. The new algorithm not only checks,
+               if the bus is available at all, it also verifies, if an I2C chip (in our case the MPU sensor with address 0x68) is present on the bus. 
+    - Kernel bug fix script modified to avoid unstable and unbootable system.
+    
 Version 2.0.1 [2020-06-16]
     - Added support to specify dtbo file used for kernel bug fix
 
