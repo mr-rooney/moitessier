@@ -6,6 +6,10 @@
 ************************************************************************************************************
 ************************************************************************************************************
 
+Version 2.2.0 [2020-11-01]
+    - Bug-fix: Some GNSS messages were dropped, due to an initialisation error. Only GSV was processed.
+    - Added support to disable/enable GSV messages.
+
 Version 2.1.1 [2020-08-11]
     - Bug-fix: TTY driver registration fails on Pi 3 if a major/minor device number is defined. The device number must be automatically assigned by the system since 
                at least kernel 5.4.51.
