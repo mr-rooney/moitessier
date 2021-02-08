@@ -6,6 +6,9 @@
 ************************************************************************************************************
 ************************************************************************************************************
 
+Version 2.2.1 [2021-02-08]
+    - Added support for kernel 5.9.x.
+
 Version 2.2.0 [2020-11-01]
     - Bug-fix: Some GNSS messages were dropped, due to an initialisation error. Only GSV was processed.
     - Added support to disable/enable GSV messages.
