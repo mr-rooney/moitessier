@@ -16,3 +16,6 @@
 [submodule "scripts"]
 	path = scripts
 	url = https://github.com/mr-rooney/moitessier-scripts.git
+[submodule "hw"]
+	path = hw
+	url = https://github.com/mr-rooney/moitessier-hw.git
